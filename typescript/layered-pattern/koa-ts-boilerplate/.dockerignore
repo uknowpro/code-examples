@@ -1,0 +1,10 @@
+node_modules
+Dockerfile
+.dockerignore
+.github
+dist
+local.docker-compose.yaml
+local.Dockerfile
+LICENSE
+README.md
+README.KOR.md

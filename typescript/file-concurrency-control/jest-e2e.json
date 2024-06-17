@@ -1,0 +1,21 @@
+{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": ".",
+  "testEnvironment": "node",
+  "coverageDirectory": "./coverage",
+  "setupFilesAfterEnv": ["./tests/setup/jestSetupAfterEnv.ts"],
+  "globalSetup": "<rootDir>/tests/setup/jestGlobalSetup.ts",
+  "testRegex": ".e2e-spec.ts$",
+  "moduleNameMapper": {
+    "@common/(.*)$": "<rootDir>/src/common/$1",
+    "@core/(.*)$": "<rootDir>/src/core/$1",
+    "@modules": "<rootDir>/src/modules",
+    "@controllers": "<rootDir>/src/controllers",
+    "@services/(.*)$": "<rootDir>/src/services/$1",
+    "@data$": "<rootDir>/src/data",
+    "@tests/(.*)$": "<rootDir>/tests/$1"
+  },
+  "transform": {
+    "^.+\\.(t|j)s$": "ts-jest"
+  }
+}

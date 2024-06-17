@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@common/*": [
+        "src/common/*"
+      ],
+      "@core/*": [
+        "src/core/*"
+      ],
+      "@configs": [
+        "src/configs"
+      ],
+      "@controllers": [
+        "src/controllers"
+      ],
+      "@services": [
+        "src/services"
+      ],
+      "@data-access": [
+        "src/data-access"
+      ],
+      "@data-access/*": [
+        "src/data-access/*"
+      ],
+      "@custom/*": [
+        "src/custom/*"
+      ]
+    }
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "name": "three-tier-layered-architecture-on-koa",
+  "version": "0.0.1",
+  "description": "",
+  "author": "",
+  "private": false,
+  "license": "UNLICENSED",
+  "scripts": {
+    "lint": "eslint \"src/**/*.ts\"",
+    "lint:fix": "eslint \"src/**/*.ts\" --fix",
+    "build": "rimraf dist && tsc",
+    "start:local": "NODE_ENV=local npm run build && node dist/main.js",
+    "start": "npm run build && node dist/main.js",
+    "migration:up": "ts-node ./node_modules/.bin/mikro-orm migration:up"
+  },
+  "dependencies": {
+    "@koa/cors": "^4.0.0",
+    "@mikro-orm/core": "^5.8.7",
+    "@mikro-orm/mariadb": "^5.8.7",
+    "@mikro-orm/migrations": "^5.8.7",
+    "@mikro-orm/mysql": "^5.8.7",
+    "dotenv": "^16.3.1",
+    "koa": "^2.14.2",
+    "koa-bodyparser": "^4.4.1",
+    "koa-helmet": "^7.0.2",
+    "koa-swagger-decorator": "^1.8.7",
+    "path": "^0.12.7",
+    "reflect-metadata": "^0.1.13",
+    "run-script": "^0.1.1",
+    "ts-node": "^10.9.1",
+    "winston": "^3.10.0"
+  },
+  "devDependencies": {
+    "@mikro-orm/cli": "^5.8.7",
+    "@types/koa": "^2.13.9",
+    "@types/koa-bodyparser": "^4.3.10",
+    "@types/koa-helmet": "^6.0.5",
+    "@types/koa__cors": "^4.0.1",
+    "@typescript-eslint/eslint-plugin": "^6.7.4",
+    "@typescript-eslint/parser": "^6.7.4",
+    "eslint": "^8.51.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-prettier": "^5.0.0",
+    "prettier": "^3.0.3",
+    "rimraf": "^5.0.5",
+    "typescript": "^5.2.2"
+  },
+  "mikro-orm": {
+    "useTsNode": true,
+    "configPaths": [
+      "./src/common/config/db.config.ts",
+      "./dist/common/config/db.config.js",
+      "/home/node/app/dist/common/db.config.js"
+    ]
+  }
+}

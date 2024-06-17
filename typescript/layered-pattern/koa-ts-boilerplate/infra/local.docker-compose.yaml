@@ -1,0 +1,36 @@
+version: "3.9"
+services:
+  koa_server:
+    container_name: layered_koa_server
+    build:
+      context: ../.
+      dockerfile: ./infra/local.Dockerfile
+    depends_on:
+      - koa_server_rdb
+    environment:
+      - DB_PORT=3306
+      - DB_NAME=local
+      - DB_USER=root
+      - DB_PASSWORD=local
+      - DB_MASTER_CLIENT_HOST=koa_server_rdb
+      - DB_SLAVE_CLIENT_HOST=koa_server_rdb
+    ports:
+      - "6750:3000"
+    networks:
+      - koa_server
+    links:
+      - koa_server_rdb:koa_server_rdb
+  koa_server_rdb:
+    container_name: layered_koa_server_rdb
+    image: mariadb:10.10.4
+    user: root
+    environment:
+      - MARIADB_ROOT_PASSWORD=local
+      - MARIADB_DATABASE=rdb
+    ports:
+      - "8750:3306"
+    networks:
+      - koa_server
+networks:
+  koa_server:
+    driver: bridge

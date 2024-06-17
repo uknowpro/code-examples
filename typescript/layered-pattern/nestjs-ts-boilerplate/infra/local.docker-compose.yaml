@@ -1,0 +1,36 @@
+version: "3.9"
+services:
+  nestjs_server:
+    container_name: layered_nestjs_server
+    build:
+      context: ../.
+      dockerfile: ./local.Dockerfile
+    depends_on:
+      - nestjs_server_rdb
+    environment:
+      - DB_PORT=3306
+      - DB_NAME=local
+      - DB_USER=root
+      - DB_PASSWORD=local
+      - DB_MASTER_CLIENT_HOST=nestjs_server_rdb
+      - DB_SLAVE_CLIENT_HOST=nestjs_server_rdb
+    ports:
+      - "2750:3000"
+    networks:
+      - nestjs_server
+    links:
+      - nestjs_server_rdb:nestjs_server_rdb
+  nestjs_server_rdb:
+    container_name: layered_nestjs_server_rdb
+    image: mariadb:10.10.4
+    user: root
+    environment:
+      - MARIADB_ROOT_PASSWORD=local
+      - MARIADB_DATABASE=rdb
+    ports:
+      - "3750:3306"
+    networks:
+      - nestjs_server
+networks:
+  nestjs_server:
+    driver: bridge

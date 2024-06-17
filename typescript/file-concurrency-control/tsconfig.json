@@ -1,0 +1,33 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "module": "commonjs",
+    "declaration": true,
+    "removeComments": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+    "strictPropertyInitialization": false,
+    "target": "es2019",
+    "sourceMap": true,
+    "outDir": "./dist",
+    "baseUrl": "./",
+    "incremental": true,
+    "skipLibCheck": true,
+    "strictNullChecks": true,
+    "noImplicitAny": false,
+    "strictBindCallApply": false,
+    "forceConsistentCasingInFileNames": false,
+    "noFallthroughCasesInSwitch": false,
+    "paths": {
+      "@common/*": ["src/common/*"],
+      "@configs/*": ["src/configs/*"],
+      "@core/*": ["src/core/*"],
+      "@modules": ["src/modules"],
+      "@controllers": ["src/controllers"],
+      "@services/*": ["src/services/*"],
+      "@data": ["src/data"],
+      "@tests/*": ["tests/*"]
+    }
+  }
+}
