@@ -1,0 +1,50 @@
+namespace: 'helm-example'
+replicaCount: 1
+
+app:
+  name: 'app-backend-stag'
+
+labels:
+  env: 'staging'
+  cluster: 'EKS-STG'
+
+image:
+  repository: 111111111111111.dkr.ecr.ap-northeast-2.amazonaws.com/app-backend-stag
+  pullPolicy: IfNotPresent
+  tag: will-be-replaced
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: "app-backend-stag"
+
+serviceAccount:
+  create: false
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: false
+
+resources:
+  limits:
+    memory: 1024Mi
+  requests:
+    cpu: 1000m
+    memory: 1024Mi
+
+podAnnotations: {}
+
+podSecurityContext: {}
+
+securityContext: {}
+
+autoscaling:
+  enabled: false
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

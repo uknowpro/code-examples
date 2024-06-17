@@ -1,0 +1,148 @@
+name: Production Deployment on push production branch
+on: 
+  push:
+    branches:
+      - production
+    paths:
+      - "application/**"
+      - ".github/workflows/push-on-production.yml"
+
+env:
+  AWS_DEFAULT_REGION: ap-northeast-2
+  AWS_ACCESS_KEY_ID: ${{ secrets.PROD_AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.PROD_AWS_SECRET_ACCESS_KEY }}
+  AWS_ECR: application.dkr.ecr.ap-northeast-2.amazonaws.com
+  ECR_REPOSITORY: application-prod
+  ECS_SECURITY_GROUP: sg-application
+  ECS_SUBNET: subnet-application
+  ECS_CLUSTER: application-prod
+  ECS_SERVICE: application-prod-service
+  ECS_CONTAINER: backend
+  ECS_TASK_DEFINITION: .aws/application-prod-task-definition.json
+  ECS_MIGRATION_CLUSTER: application-migration-prod
+
+defaults:
+  run:
+    shell: bash
+    working-directory: application
+
+jobs:
+  build_and_push_docker_image:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20.9.0'
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_DEFAULT_REGION }}
+
+      - name: Export env from aws ssm
+        continue-on-error: false
+        uses: classtinginc/chamber-action@master
+        with:
+          args: export --format dotenv --output-file application/.env prod/application
+  
+      - name: Substitute env char
+        id: application-env
+        run: |
+          sed 's/\\!/!/' .env > temp
+          rm .env
+          cat temp > .env
+          rm temp
+
+      - name: Build, tag, and push Backend image to Amazon ECR
+        uses: mr-smithers-excellent/docker-build-push@v5
+        with:
+          directory: ./application
+          dockerfile: './application/Dockerfile'
+          image: ${{ env.ECR_REPOSITORY }}
+          tags: ${{ github.sha }},latest
+          registry: ${{ env.AWS_ECR }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ env.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ env.AWS_SECRET_ACCESS_KEY }}
+
+  when_migrations_changed:
+    runs-on: ubuntu-latest
+    needs: [build_and_push_docker_image]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20.9.0'
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_DEFAULT_REGION }}
+
+      - name: Check new migrations
+        continue-on-error: false
+        uses: dorny/paths-filter@v2
+        id: is-new-migrations
+        with:
+          base: 'master'
+          filters: |
+            migrations:
+              - 'application/migrations/**'
+
+      - name: Download ecs-task-runner
+        continue-on-error: false
+        if: steps.is-new-migrations.outputs.migrations == 'true'
+        run: |
+          curl -Lo ecs-task-runner https://github.com/pottava/ecs-task-runner/releases/download/3.0/ecs-task-runner_linux_amd64 && chmod +x ecs-task-runner
+  
+      - name: Run a synchronous migration task
+        continue-on-error: false
+        if: steps.is-new-migrations.outputs.migrations == 'true'
+        id: run-migration
+        run: |
+          ./ecs-task-runner run $AWS_ECR/$ECR_REPOSITORY:latest --entrypoint "sh,-c" \
+          --command "yarn mig:up" \
+          --security-groups $ECS_SECURITY_GROUP --subnets $ECS_SUBNET --docker-user "node" --region $AWS_DEFAULT_REGION --cluster $ECS_MIGRATION_CLUSTER
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [build_and_push_docker_image, when_migrations_changed]
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_DEFAULT_REGION }}
+
+      - name: Fill in the new image ID in the Amazon ECS task def
+        id: task-def
+        continue-on-error: false
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: ${{ env.ECS_TASK_DEFINITION }}
+          container-name: ${{ env.ECS_CONTAINER }}
+          image: ${{ env.AWS_ECR }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+
+      - name: Deploy Amazon ECS task def
+        continue-on-error: false
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true

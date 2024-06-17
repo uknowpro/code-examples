@@ -1,0 +1,124 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: {{ .Values.namespace }}
+  name: {{ include "app-backend.fullname" . }}
+  labels:
+    {{- include "app-backend.labels" . | nindent 4 }}
+spec:
+{{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+{{- end }}
+  selector:
+    matchLabels:
+      {{- include "app-backend.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+    {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+      labels:
+        {{- include "app-backend.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "app-backend.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+          - name: NAMESPACE
+            value: {{ .Values.namespace }}
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                - /bin/sh
+                - -c
+                - |
+                  curl -k -H "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" -H "Content-Type: application/merge-patch+json" -X PATCH https://kubernetes.default.svc/api/v1/namespaces/${NAMESPACE}/pods/${HOSTNAME} -d '{"metadata": {"labels": {"app": "draining"}}}' && sleep 20
+          startupProbe: # 성공시에만 readiness, liveness probe 활성화
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 3
+            failureThreshold: 10
+            periodSeconds: 3
+            successThreshold: 1
+            timeoutSeconds: 1
+          readinessProbe: # 실패시, 로드밸런싱 타겟에서 제외
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 0
+            failureThreshold: 1
+            periodSeconds: 1
+            successThreshold: 1
+            timeoutSeconds: 1
+          livenessProbe: # 실패시, 컨테이너 재기동
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 0
+            failureThreshold: 3
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+          {{- with .Values.mountConfigMap }}
+          {{- range $file, $configMap := . }}
+          - mountPath: "/work/{{ $file }}"
+            name: {{ $configMap }}
+            subPath: {{ $file }}
+          {{- end }}
+          {{- end }}
+          {{- with .Values.mount }}
+          {{- range $file := keys . }}
+          - mountPath: "/work/{{ $file }}"
+            name: raw-files
+            subPath: {{ $file }}
+          {{- end }}
+          {{- end }}
+          {{- with .Values.command }}
+          command:
+            {{- toYaml . | nindent 12}}
+          {{- end}}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+      {{- with .Values.mountConfigMap }}
+        {{- range $configMap := values . | uniq }}
+        - name: {{ $configMap }}
+          configMap:
+            name: {{ $configMap }}
+        {{- end }}
+      {{- end }}
+      {{- if .Values.mount }}
+        - name: raw-files
+          configMap:
+            name: {{ include "app-backend.fullname" . }}-raw-files
+      {{- end }}

@@ -1,0 +1,54 @@
+namespace: 'helm-example'
+replicaCount: 1
+
+app:
+  name: 'app-backend-prod'
+
+labels:
+  env: 'production'
+  cluster: 'EKS-PRD'
+
+image:
+  repository: 220554832478.dkr.ecr.ap-northeast-2.amazonaws.com/app-backend-prod
+  pullPolicy: IfNotPresent
+  tag: will-be-replaced
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: "app-backend-prod"
+
+serviceAccount:
+  create: false
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: false
+
+resources:
+  limits:
+    memory: 1024Mi
+  requests:
+    cpu: 1000m
+    memory: 1024Mi
+
+podAnnotations: {}
+
+podSecurityContext: {}
+
+securityContext: {}
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 40
+  targetMemoryUtilizationPercentage: 50
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
