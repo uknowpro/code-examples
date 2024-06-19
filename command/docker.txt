@@ -1,0 +1,12 @@
+# delete docker images all
+docker rmi $(docker images -q)
+
+# pull aws sqs image
+docker pull localstack/localstack:0.11.1
+
+# build docker
+docker build -t test .
+
+# login (required secret)
+docker login -u test sample.registry.com
+

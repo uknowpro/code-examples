@@ -1,0 +1,10 @@
+# ssh connection
+ssh -i ~/aws.pem ubuntu@52.192.191.109
+
+ssh ubuntu@52.192.191.109
+
+# ssh port forwarding
+ssh -N -f -L 3306:data.cluster.ap-northeast-2.rds.amazonaws.com:3306 ubuntu@52.192.191.109
+
+# alias ssh port forwarding
+alias aws_rds="ssh -N -f -L 3306:data.cluster.ap-northeast-2.rds.amazonaws.com:3306 ubuntu@52.192.191.109"

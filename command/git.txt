@@ -1,0 +1,2 @@
+# delete multi branches
+git branch | grep "feat/add" | xargs git branch -D

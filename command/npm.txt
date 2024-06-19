@@ -1,0 +1,2 @@
+# print audit result to html
+npm audit --json | npm-audit-html
