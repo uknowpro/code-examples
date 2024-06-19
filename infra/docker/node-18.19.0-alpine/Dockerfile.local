@@ -1,0 +1,27 @@
+# local only base image because alpine not support dns caching on os level
+# node depends on os level dns caching
+FROM node:18.19.0-alpine
+
+# Install dependencies
+WORKDIR /usr/src/app
+COPY ./dist/apps/service-app/package*.json ./
+RUN npm install --only=production
+# RUN npm install @mikro-orm/seeder@6.1.3
+
+# Copy built service-app application files
+COPY ./dist/ ./dist/
+COPY ./apps/service-app ./apps/service-app
+
+# Rename dot env file for local only
+# COPY ./apps/service-app/.env.test ./apps/service-app/.env
+# RUN rm ./apps/service-app/.env.test
+
+# Generate static swagger json
+# RUN swaggerDoc=true node dist/apps/service-app/main.js
+
+# Run the application under "node" user by default
+RUN chown -R node:node .
+USER node
+EXPOSE 3000
+
+CMD ["node", "./dist/apps/service-app/main.js"]

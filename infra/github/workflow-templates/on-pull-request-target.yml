@@ -1,0 +1,9 @@
+name: Production Deployment on push production branch
+on:
+  pull_request_target:
+    branches:
+      - 'backend/**'
+    paths:
+      - 'apps/backend/**'
+      - '.github/workflows/pull-request-target.yml'
+# skip when rebase and push another paths
