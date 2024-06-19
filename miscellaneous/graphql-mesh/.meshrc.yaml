@@ -1,0 +1,34 @@
+sources:
+  - name: ApiA
+    handler:
+      openapi:
+        endpoint: 'ApiA'
+        source: 'https://swagger.json'
+        ignoreErrorResponses: true
+    transforms:
+      - namingConvention:
+          mode: bare
+          typeNames: pascalCase
+          fieldNames: camelCase
+          fieldArgumentNames: camelCase
+  - name: ApiB
+    handler:
+      openapi:
+        endpoint: 'ApiB'
+        source: ./mesh-sources/openapi-spec.yaml
+        ignoreErrorResponses: true
+    transforms:
+      - namingConvention:
+          mode: bare
+          typeNames: pascalCase
+          fieldNames: camelCase
+          fieldArgumentNames: camelCase
+      - prefix:
+          mode: wrap
+          value: ApiB_
+transforms:
+  - filterSchema:
+      mode: bare
+      filters:
+        - Query.!*
+        - Mutation.!*
