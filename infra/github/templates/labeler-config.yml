@@ -1,0 +1,6 @@
+frontend:
+  - any: ["frontend/**", ".github/workflows/frontend-stag.yml", ".github/workflows/frontend-prod.yml"]
+  - all: ["!backend/**", "!admin/**"]
+backend:
+  - any: ["backend/**", ".github/workflows/backend-stag.yml", ".github/workflows/backend-prod.yml"]
+  - all: ["!frontend/**"]
