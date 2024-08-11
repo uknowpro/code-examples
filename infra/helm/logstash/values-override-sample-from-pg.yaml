@@ -1,0 +1,324 @@
+fullnameOverride: "logstash-sample-from-pg"
+
+clusterDomain: cluster.local
+
+commonLabels:
+  name: "logstash-sample-from-pg"
+  deployment-version: 0.0.1
+
+image:
+  registry: docker.io
+  repository: opensearchproject/logstash-oss-with-opensearch-output-plugin
+  tag: latest
+  digest: ""
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+  debug: false
+
+terminationGracePeriodSeconds: 20
+
+ingress:
+  enabled: false
+
+service:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP
+
+persistence:
+  enabled: false
+  existingClaim: ""
+  storageClass: ""
+  accessModes:
+    - ReadWriteOnce
+  size: 2Gi
+  annotations: {}
+  mountPath: /logstash/data
+
+podSecurityContext:
+  enabled: false
+  fsGroupChangePolicy: Always
+  sysctls: []
+  supplementalGroups: []
+  fsGroup: 1000
+
+containerSecurityContext:
+  enabled: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: false
+  runAsUser: 1000
+  runAsGroup: 1000
+
+initContainers:
+  - name: init-postgresql-driver
+    image: busybox
+    command:
+      - sh
+      - -c
+      - |
+        wget -O /usr/share/logstash/driver/postgresql-42.2.20.jar https://jdbc.postgresql.org/download/postgresql-42.2.20.jar
+        chmod 644 /usr/share/logstash/driver/postgresql-42.2.20.jar
+    volumeMounts:
+      - name: logstash-driver
+        mountPath: /usr/share/logstash/driver
+  - name: init-dead-letter-queue
+    image: busybox
+    command:
+      - sh
+      - -c
+      - |
+        mkdir -p /usr/share/logstash/dead_letter_queue || true
+        chmod 777 /usr/share/logstash/dead_letter_queue
+    volumeMounts:
+      - name: logstash-dead-letter-queue
+        mountPath: /usr/share/logstash/dead_letter_queue
+
+extraVolumeMounts:
+  - name: logstash-driver
+    mountPath: /usr/share/logstash/driver
+  - name: logstash-dead-letter-queue
+    mountPath: /usr/share/logstash/dead_letter_queue
+
+extraVolumes:
+  - name: logstash-driver
+  - name: logstash-dead-letter-queue
+    emptyDir: {}
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 512Mi
+  limits:
+    cpu: 12
+    memory: 24Gi
+
+startupProbe:
+  enabled: false
+  initialDelaySeconds: 60
+  periodSeconds: 10
+  timeoutSeconds: 5
+  successThreshold: 1
+  failureThreshold: 6
+
+readinessProbe:
+  enabled: false
+  initialDelaySeconds: 60
+  periodSeconds: 10
+  timeoutSeconds: 5
+  successThreshold: 1
+  failureThreshold: 6
+
+livenessProbe:
+  enabled: false
+  initialDelaySeconds: 60
+  periodSeconds: 10
+  timeoutSeconds: 5
+  successThreshold: 1
+  failureThreshold: 6
+
+jvmOptionsFile:
+  jvm.options: |-
+    ## JVM configuration
+
+    # Xms represents the initial size of total heap space
+    # Xmx represents the maximum size of total heap space
+
+    -Xms18g
+    -Xmx18g
+
+    ################################################################
+    ## Expert settings
+    ################################################################
+    ##
+    ## All settings below this section are considered
+    ## expert settings. Don't tamper with them unless
+    ## you understand what you are doing
+    ##
+    ################################################################
+
+    ## GC configuration
+    11-13:-XX:+UseConcMarkSweepGC
+    11-13:-XX:CMSInitiatingOccupancyFraction=75
+    11-13:-XX:+UseCMSInitiatingOccupancyOnly
+
+    ## Locale
+    # Set the locale language
+    #-Duser.language=en
+
+    # Set the locale country
+    #-Duser.country=US
+
+    # Set the locale variant, if any
+    #-Duser.variant=
+
+    ## basic
+
+    # set the I/O temp directory
+    #-Djava.io.tmpdir=$HOME
+
+    # set to headless, just in case
+    -Djava.awt.headless=true
+
+    # ensure UTF-8 encoding by default (e.g. filenames)
+    -Dfile.encoding=UTF-8
+
+    # use our provided JNA always versus the system one
+    #-Djna.nosys=true
+
+    # Turn on JRuby invokedynamic
+    -Djruby.compile.invokedynamic=true
+
+    ## heap dumps
+
+    # generate a heap dump when an allocation from the Java heap fails
+    # heap dumps are created in the working directory of the JVM
+    -XX:+HeapDumpOnOutOfMemoryError
+
+    # specify an alternative path for heap dumps
+    # ensure the directory exists and has sufficient space
+    #-XX:HeapDumpPath=${LOGSTASH_HOME}/heapdump.hprof
+
+    ## GC logging
+    #-Xlog:gc*,gc+age=trace,safepoint:file=@loggc@:utctime,pid,tags:filecount=32,filesize=64m
+
+    # log GC status to a file with time stamps
+    # ensure the directory exists
+    #-Xloggc:${LS_GC_LOG_FILE}
+
+    # Entropy source for randomness
+    -Djava.security.egd=file:/dev/urandom
+
+    # Copy the logging context from parent threads to children
+    -Dlog4j2.isThreadContextMapInheritable=true
+
+logstashYAMLFile:
+  logstash.yml: |-
+    api.http.host: 0.0.0.0
+    pipeline:
+      id: main
+      workers: 12
+      batch.size: 2048
+      batch.delay: 100000
+
+logstashConfFile:
+  logstash.conf: |-
+    input {
+      jdbc {
+        jdbc_connection_string => "jdbc:postgresql://${RDB_HOST}/${RDB_DB_NAME}"
+        jdbc_user => "${RDB_USER}"
+        jdbc_password => "${RDB_PASSWORD}"
+        jdbc_driver_class => "org.postgresql.Driver"
+        jdbc_driver_library => "/usr/share/logstash/driver/postgresql-42.2.20.jar"
+        statement => "SELECT
+            sam.id ::text AS id,
+            sam.created_at ::text AS sam_created_at,
+            sam.updated_at ::text AS sam_updpated_at,
+            json_build_object(
+              'id', dam.id ::text,
+            )::text AS json_info,
+            dam.updated_at::timestamp AS _timestamp
+          FROM sample AS sam JOIN dample AS dam on sam.dam_id = dam.id
+          WHERE dam.updated_at > :sql_last_value
+          LIMIT 5000;"
+        schedule => "*/2 * * * * *"
+        use_column_value => true
+        tracking_column => "_timestamp"
+        tracking_column_type => "timestamp"
+        codec => json_lines
+        clean_run => false
+        last_run_metadata_path => "/usr/share/logstash/.logstash_jdbc_last_run"
+      }
+    }
+
+    filter {
+      date {
+        match => ["sam_created_at", "yyyy-MM-dd HH:mm:ss.SSSSSS+00", "yyyy-MM-dd HH:mm:ss.SS+00"]
+        target => "sam_created_at"
+        timezone => "UTC"
+      }
+      date {
+        match => ["sam_updpated_at", "yyyy-MM-dd HH:mm:ss.SSSSSS+00", "yyyy-MM-dd HH:mm:ss.SS+00"]
+        target => "sam_updpated_at"
+        timezone => "UTC"
+      }
+
+
+      json {
+        source => "json_info"
+        target => "json_info_json"
+        remove_field => ["json_info"]
+      }
+      ruby {
+        code => '
+          json_info_json = event.get("json_info_json")
+          parsed_info = {}
+
+          if json_info_json.is_a?(Hash)
+            json_info_json.each do |key, value|
+              if value.nil?
+                parsed_info[key] = nil
+              else
+                begin
+                  parsed_value = LogStash::Json.load(value)
+                  parsed_info[key] = parsed_value
+                rescue LogStash::Json::ParserError
+                  parsed_info[key] = value
+                end
+              end
+
+              parsed_info["created_at"] = event.get("sam_created_at")
+              parsed_info["updated_at"] = event.get("sam_updated_at")
+            end
+
+            event.set("json_info", parsed_info)
+          end
+        '
+      }
+
+      mutate {
+        remove_field => [
+          "json_info_json",
+          "_timestamp"
+        ]
+      }
+
+      ruby {
+        code => '
+          if !event.get("json_info")
+            event.set("json_info", nil)
+          end
+        '
+      }
+    }
+
+    output {
+      if "_dateparsefailure" in [tags] {
+        opensearch {
+          hosts => ["${OPENSEARCH_HOST}:9200"]
+          user => "${OPENSEARCH_USER}"
+          password => "${OPENSEARCH_PASSWORD}"
+          index => "failed_sample"
+          document_id => "%{id}"
+          ssl => false
+          # doc_as_upsert => true
+          # action => "update"
+        }
+      } else {
+        opensearch {
+          hosts => ["${OPENSEARCH_HOST}:9200"]
+          user => "${OPENSEARCH_USER}"
+          password => "${OPENSEARCH_PASSWORD}"
+          index => "sample"
+          document_id => "%{id}"
+          ssl => false
+          # doc_as_upsert => true
+          # action => "update"
+        }
+      }
+    }
