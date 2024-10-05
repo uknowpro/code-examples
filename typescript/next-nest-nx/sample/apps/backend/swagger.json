@@ -1,0 +1,1 @@
+{"openapi":"3.0.0","paths":{},"info":{"title":"Earnings Letter REST API","description":"Earnings Letter 서버에서 제공되는 REST API","version":"1.0","contact":{}},"tags":[],"servers":[],"components":{"securitySchemes":{"bearer":{"scheme":"bearer","bearerFormat":"JWT","type":"http"}},"schemas":{}}}

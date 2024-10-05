@@ -1,0 +1,42 @@
+services:
+  earnings_letter_backend:
+    container_name: earnings_letter_backend
+    build:
+      context: ../../../.
+      dockerfile: ./apps/backend/Dockerfile
+    depends_on:
+      earnings_letter_postgres:
+        condition: service_started
+    restart: always
+    ports:
+      - 3000:3000
+    networks:
+      - earnings_letter_backend
+    links:
+      - earnings_letter_postgres:earnings_letter_postgres
+    environment:
+      DATABASE_MASTER_URL: 'postgres://root:local@earnings_letter_postgres:5432/letter'
+      DATABASE_REPLICA_URL: 'postgres://root:local@earnings_letter_postgres:5432/letter'
+
+  earnings_letter_postgres:
+    container_name: earnings_letter_postgres
+    image: postgres:16.1
+    user: root
+    volumes:
+      - earnings_letter_data:/data/postgres
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_DB: letter
+      POSTGRES_PASSWORD: local
+      PGDATA: /data/postgres
+    ports:
+      - 5432:5432
+    networks:
+      - earnings_letter_backend
+
+volumes:
+  earnings_letter_data:
+    driver: local
+networks:
+  earnings_letter_backend:
+    driver: bridge

@@ -13,7 +13,8 @@
       ],
       "options": {
         "buildTarget": "backend:build",
-        "runBuildTargetDependencies": false
+        "runBuildTargetDependencies": false,
+        "generatePackageJson": true
       },
       "configurations": {
         "development": {
@@ -24,7 +25,15 @@
         }
       }
     },
-    "docker-build": {
+    "gen:swagger": {
+      "dependsOn": ["build"],
+      "defaultConfiguration": "development",
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "isGenSwagger=true node dist/apps/backend/main.js"
+      }
+    },
+    "dc:build": {
       "dependsOn": [
         "build"
       ],

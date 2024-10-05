@@ -1,0 +1,32 @@
+FROM node:16.20.0-alpine AS base
+
+# Set timezone to KST
+ENV TZ="Asia/Seoul"
+
+# Set working directory
+FROM base AS deps
+RUN rm -rf /usr/src/app
+RUN mkdir -p /usr/src/app
+WORKDIR /usr/src/app
+
+# Install packages
+COPY package.json yarn.lock ./
+COPY .env ./
+RUN yarn install --frozen-lockfile
+RUN rm -rf ./.next/cache
+
+# Build
+FROM base AS builder
+WORKDIR /usr/src/app
+COPY --from=deps /usr/src/app/node_modules ./node_modules
+COPY . .
+RUN yarn build
+
+# Set user
+RUN chown -R node:node /usr/src/app
+USER node
+COPY --chown=node:node . .
+
+EXPOSE 3000
+
+CMD [ "yarn", "start" ]

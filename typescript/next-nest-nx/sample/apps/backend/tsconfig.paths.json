@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "paths": {
+      "@configs": ["apps/backend/src/configs", "src/configs"],
+      "@core/*": ["apps/backend/src/core/*", "src/core/*"],
+      "@controllers": ["apps/backend/src/controllers", "src/controllers"],
+      "@services": ["apps/backend/src/services", "src/services"],
+      "@common/*": ["apps/backend/src/common/*", "src/common/*"],
+      "@data-access/*": ["apps/backend/src/data-access/*", "src/data-access/*"],
+    }
+  }
+}
