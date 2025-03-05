@@ -31,3 +31,11 @@ scp /etc/rancher/k3s/k3s.yaml uknow@192.168.35.76:/home/uknow/.kube/k3s.yaml
 echo 'export KUBECONFIG=/home/uknow/.kube/k3s.yaml' >> ~/.bashrc
 source ~/.bashrc
 ```
+
+#### k3s image pull secret
+```bash
+kubectl create secret docker-registry regcred \
+    --docker-server=192.168.35.141:5000 \
+    --docker-username=<사용자이름> \
+    --docker-password=<비밀번호>
+```
